@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantizer</title>
+    <style>
+        canvas {
+            max-height: 70vh;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="out">Wow kein HTML5 im Jahre 2024 ist stark</canvas><br>
+    <input type="file" id="upload" accept="image/*"><br>
+    R<input class="kkslider" id="r" type="range" min="1" max="8" value="3"><span id="sr">3</span><br>
+    G<input class="kkslider" id="g" type="range" min="1" max="8" value="3"><span id="sg">3</span><br>
+    B<input class="kkslider" id="b" type="range" min="1" max="8" value="2"><span id="sb">2</span><br>
+
+    <script>
+        function $(id) {
+            return document.getElementById(id);
+        }
+
+        const canvas = $("out");
+        const ctx = canvas.getContext("2d");
+        let originalImg = null;
+
+        function quantize() {
+            const rBits = parseInt($("r").value);
+            const gBits = parseInt($("g").value);
+            const bBits = parseInt($("b").value);
+
+            $("sr").innerText = rBits;
+            $("sg").innerText = gBits;
+            $("sb").innerText = bBits;
+
+            const rFac = 256 / (1 << rBits);
+            const gFac = 256 / (1 << gBits);
+            const bFac = 256 / (1 << bBits);
+
+            if(!originalImg) return;
+            canvas.width = originalImg.width;
+            canvas.height = originalImg.height;
+            ctx.drawImage(originalImg, 0, 0, canvas.width, canvas.height);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+
+            //eigentlich als fix für die dunklen Farben aber verzerrt Farbraum nach pink?? 
+            /*for (let i = 0; i < data.length; i+=4) {
+                data[ i ] = Math.min(255, Math.floor(data[ i ] / rFac) * rFac + rFac / 2 - 1);
+                data[i+1] = Math.min(255, Math.floor(data[i+1] / gFac) * gFac + gFac / 2 - 1);
+                data[i+2] = Math.min(255, Math.floor(data[i+2] / bFac) * bFac + bFac / 2 - 1);
+            }*/
+
+            for (let i = 0; i < data.length; i += 4) {
+                data[ i ] = Math.floor(data[ i ] / rFac) * rFac;
+                data[i+1] = Math.floor(data[i+1] / gFac) * gFac;
+                data[i+2] = Math.floor(data[i+2] / bFac) * bFac;
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        $("upload").addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if(!file) {alert("file upload error"); return}
+            const img = new Image();
+            img.onload = () => {
+                originalImg = img;
+                quantize();
+            };
+            img.src = URL.createObjectURL(file);
+        });
+
+        Array.from(document.getElementsByClassName("kkslider")).forEach(slider => {
+            slider.addEventListener("input", quantize);
+        });
+
+        const fish = new Image();
+        fish.onload = () => {
+            originalImg = fish;
+            quantize();
+        };
+        fish.src = "/fish.jpg";
+    </script>
+</body>
+</html>
